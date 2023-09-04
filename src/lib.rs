@@ -210,14 +210,8 @@ impl It8951 {
         )
     }
 
-    /// Update region of e-paper display.
-    pub fn update_region(
-        &mut self,
-        image: &image::DynamicImage,
-        x: u32,
-        y: u32,
-        mode: Mode,
-    ) -> Result<()> {
+    /// Load region of e-paper display
+    pub fn load_region(&mut self, image: &image::DynamicImage, x: u32, y: u32) -> Result<()> {
         let data = image.as_bytes();
         let (width, height) = image.dimensions();
 
@@ -246,6 +240,23 @@ impl It8951 {
             )?;
             i += row_height * w;
         }
+
+        Ok(())
+    }
+
+    /// Show region of e-paper display.
+    pub fn display_region(
+        &mut self,
+        image: &image::DynamicImage,
+        x: u32,
+        y: u32,
+        mode: Mode,
+    ) -> Result<()> {
+        let (width, height) = image.dimensions();
+
+        // we send the image in bands of MAX_TRANSFER
+        let address = self.get_system_info().unwrap().image_buffer_base;
+
         self.dpy_area(DisplayArea {
             address,
             display_mode: mode,
