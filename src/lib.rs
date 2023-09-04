@@ -247,13 +247,12 @@ impl It8951 {
     /// Show region of e-paper display.
     pub fn display_region(
         &mut self,
-        image: &image::DynamicImage,
         x: u32,
         y: u32,
+        width: u32,
+        height: u32,
         mode: Mode,
     ) -> Result<()> {
-        let (width, height) = image.dimensions();
-
         // we send the image in bands of MAX_TRANSFER
         let address = self.get_system_info().unwrap().image_buffer_base;
 

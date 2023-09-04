@@ -1,3 +1,4 @@
+use image::GenericImageView;
 use rust_it8951::{It8951, Mode};
 use std::thread;
 use std::time::Duration;
@@ -21,6 +22,8 @@ fn main() -> anyhow::Result<()> {
     println!("Display data");
     let img = image::open("kitten.jpg")?;
     let grayscale_image = img.grayscale();
+    let width = grayscale_image.width();
+    let height = grayscale_image.height();
 
     // it8951.update_region(&system_info, &[], 0, 0, 0).unwrap();
 
@@ -35,7 +38,7 @@ fn main() -> anyhow::Result<()> {
 
     it8951.load_region(&grayscale_image, 0, 0)?;
 
-    it8951.display_region(&grayscale_image, 0, 0, Mode::GC16)?;
+    it8951.display_region(0, 0, width, height, Mode::GC16)?;
     println!("End");
     Ok(())
 }
