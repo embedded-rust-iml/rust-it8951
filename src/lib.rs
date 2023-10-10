@@ -29,6 +29,14 @@ const LD_IMAGE_AREA_CMD: [u8; 16] = [
 const DPY_AREA_CMD: [u8; 16] = [
     0xfe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x94, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
+const PMIC_CONTROL: [u8; 16] = [
+    0xfe, 0x00, 0x00, 0x00, 0x00, 0x00, 0xa3, 0x00, /* Set VCom 15:8 */
+    0x00, /* Set VCom 7:0 */
+    0x00, /* Do set VCom? 0 - no, 1 - yes */
+    0x00, /* Do Power on/off 0 - no, 1 - Do */
+    0x00, /* Power 1 - on/ 0 - off */
+    0x00, 0x00, 0x00, 0x00,
+];
 
 /// Display mode
 #[repr(u32)]
@@ -180,6 +188,60 @@ impl It8951 {
             product: str::from_utf8(&c_inquiry.product).unwrap().to_string(),
             revision: str::from_utf8(&c_inquiry.revision).unwrap().to_string(),
         })
+    }
+
+    /// Power On/Off display
+    pub fn set_power(&mut self, on: bool) -> Result<()> {
+        let mut pmic_control = PMIC_CONTROL;
+        // Set do power on to yes
+        pmic_control[10] = 1;
+        // Power on or off?
+        pmic_control[11] = on as u8;
+
+        println!("{:?}", pmic_control);
+
+        self.connection.write_command_no_data(&pmic_control)?;
+
+        Ok(())
+    }
+
+    /// Sets VCOM to 2500 (according to USB Programming Guide)
+    /// <https://www.waveshare.com/w/upload/c/c9/IT8951_USB_ProgrammingGuide_v.0.4_20161114.pdf>
+    pub fn set_vcom(&mut self) -> Result<()> {
+        let mut pmic_control = PMIC_CONTROL;
+        // Set VCom set to yes
+        pmic_control[9] = 1;
+        // Set VCom value to 2500
+        pmic_control[7] = 0x09;
+        pmic_control[8] = 0xc4;
+
+        println!("{:?}", pmic_control);
+
+        self.connection.write_command_no_data(&pmic_control)?;
+
+        Ok(())
+    }
+
+    /// Sets VCOM to 2500 (according to USB Programming Guide) and sets power state of display
+    /// <https://www.waveshare.com/w/upload/c/c9/IT8951_USB_ProgrammingGuide_v.0.4_20161114.pdf>
+    pub fn set_power_vcom(&mut self, power_on: bool) -> Result<()> {
+        let mut pmic_control = PMIC_CONTROL;
+        // Set VCom set to yes
+        pmic_control[9] = 1;
+        // Set VCom value to 2500
+        pmic_control[7] = 0x09;
+        pmic_control[8] = 0xc4;
+
+        // Set do power on to yes
+        pmic_control[10] = 1;
+        // Power on or off?
+        pmic_control[11] = power_on as u8;
+
+        println!("{:?}", pmic_control);
+
+        self.connection.write_command_no_data(&pmic_control)?;
+
+        Ok(())
     }
 
     fn get_sys(&mut self) -> Result<SystemInfo> {
