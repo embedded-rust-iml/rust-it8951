@@ -198,8 +198,6 @@ impl It8951 {
         // Power on or off?
         pmic_control[11] = on as u8;
 
-        println!("{:?}", pmic_control);
-
         self.connection.write_command_no_data(&pmic_control)?;
 
         Ok(())
@@ -214,8 +212,6 @@ impl It8951 {
         // Set VCom value to 2500
         pmic_control[7] = 0x09;
         pmic_control[8] = 0xc4;
-
-        println!("{:?}", pmic_control);
 
         self.connection.write_command_no_data(&pmic_control)?;
 
@@ -236,8 +232,6 @@ impl It8951 {
         pmic_control[10] = 1;
         // Power on or off?
         pmic_control[11] = power_on as u8;
-
-        println!("{:?}", pmic_control);
 
         self.connection.write_command_no_data(&pmic_control)?;
 
