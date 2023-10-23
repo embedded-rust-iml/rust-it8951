@@ -18,12 +18,7 @@ fn main() -> anyhow::Result<()> {
     let display_width = system_info.width;
     let display_height = system_info.height;
 
-    let img = image::open("kitten.jpg")?;
-    let grayscale_image = img.grayscale();
-    let width = grayscale_image.width();
-    let height = grayscale_image.height();
-
-    let img_raw = image::open("puppy.png")?.to_luma8().as_bytes().to_vec();
+    let img_raw = image::open("baseinfo.png")?.to_luma8().as_bytes().to_vec();
     let img2 = image::DynamicImage::from(
         GrayImage::from_raw(display_width, display_height, img_raw).unwrap(),
     );
@@ -37,26 +32,20 @@ fn main() -> anyhow::Result<()> {
     // 6: DU4: 4 gray times
     // 7: A2: 2 bit pictures
 
-    println!("Display puppy data");
+    println!("Display base info data");
     it8951.load_region(&img2, 0, 0)?;
     it8951.display_region(0, 0, display_width, display_height, Mode::GC16)?;
 
     println!("Sleep 2 seconds");
     thread::sleep(Duration::from_millis(2000));
 
-    println!("Load kitten data");
-    it8951.load_region(&grayscale_image, 0, 0)?;
-
     println!("Power off device");
     it8951.set_power(false)?;
 
     println!("Power on device, sleep 100ms");
-    it8951.set_power(true)?;
+    it8951.set_power_vcom(true)?;
 
     thread::sleep(Duration::from_millis(100));
-
-    println!("Display kitten data");
-    it8951.display_region(0, 0, width, height, Mode::GC16)?;
 
     println!("End");
 
