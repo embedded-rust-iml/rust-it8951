@@ -1,5 +1,5 @@
 use bincode::config::Options;
-use rusb::{DeviceHandle, Error, GlobalContext, Result};
+use rusb::{Context, DeviceHandle, Error, Result};
 use serde::{Deserialize, Serialize};
 use std::mem;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -37,7 +37,7 @@ pub struct CommandStatusWrapper {
 static TAG: AtomicU32 = AtomicU32::new(1);
 
 pub struct ScsiOverUsbConnection {
-    pub device_handle: DeviceHandle<GlobalContext>,
+    pub device_handle: DeviceHandle<Context>,
     pub endpoint_out: u8,
     pub endpoint_in: u8,
     pub timeout: Duration,

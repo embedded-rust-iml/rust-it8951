@@ -1,7 +1,7 @@
 use bincode::config::Options;
 use image::GenericImageView;
-use rusb::open_device_with_vid_pid;
-use rusb::{DeviceHandle, GlobalContext, Result};
+use rusb::DeviceHandle;
+use rusb::{Context, Result, UsbContext};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::mem;
@@ -29,6 +29,8 @@ const LD_IMAGE_AREA_CMD: [u8; 16] = [
 const DPY_AREA_CMD: [u8; 16] = [
     0xfe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x94, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
+const VENDOR_ID: u16 = 0x48d;
+const PRODUCT_ID: u16 = 0x8951;
 
 /// Display mode
 #[repr(u32)]
@@ -125,10 +127,28 @@ struct DisplayArea {
     wait_ready: u32,
 }
 
-fn open_it8951() -> Option<DeviceHandle<GlobalContext>> {
-    // XXX this should be replaced by something not for debugging only
-    // XXX but that should be is unclear to me
-    open_device_with_vid_pid(0x48d, 0x8951)
+fn open_it8951() -> Result<DeviceHandle<Context>> {
+    let context = Context::new()?;
+    let devices = context.devices()?;
+
+    let device = devices
+        .iter()
+        .find(|device| match device.device_descriptor() {
+            Ok(descriptor) => {
+                descriptor.vendor_id() == VENDOR_ID && descriptor.product_id() == PRODUCT_ID
+            }
+            Err(e) => {
+                eprintln!("Could not find device descriptor: {e:?}");
+                false
+            }
+        });
+
+    if let Some(device) = device {
+        let handle = device.open()?;
+        Ok(handle)
+    } else {
+        Err(rusb::Error::NoDevice)
+    }
 }
 
 /// Talk to the It8951 e-paper display via a USB connection
@@ -151,11 +171,11 @@ impl It8951 {
     pub fn connect() -> Result<It8951> {
         // XXX hardcoded timeout
         let timeout = Duration::from_millis(1000);
-        let mut device_handle = open_it8951().expect("Cannot open it8951");
+        let mut device_handle = open_it8951()?;
         if let Err(e) = device_handle.set_auto_detach_kernel_driver(true) {
-            println!("auto detached failed, error is {}", e);
+            println!("auto detached failed, error is {e}");
         }
-        device_handle.claim_interface(0).expect("claim failed");
+        device_handle.claim_interface(0)?;
         let mut result = It8951 {
             connection: usb::ScsiOverUsbConnection {
                 device_handle,
