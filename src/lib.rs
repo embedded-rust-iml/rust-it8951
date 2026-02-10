@@ -191,21 +191,19 @@ impl It8951 {
     }
 
     /// Power On/Off display
-    pub fn set_power(&mut self, on: bool) -> Result<()> {
+    pub fn set_power(&mut self, on: bool) -> Result<usize> {
         let mut pmic_control = PMIC_CONTROL;
         // Set do power on to yes
         pmic_control[10] = 1;
         // Power on or off?
         pmic_control[11] = on as u8;
 
-        self.connection.write_command_no_data(&pmic_control)?;
-
-        Ok(())
+        self.connection.write_command_no_data(&pmic_control)
     }
 
     /// Sets VCOM to 2500 (according to USB Programming Guide)
     /// <https://www.waveshare.com/w/upload/c/c9/IT8951_USB_ProgrammingGuide_v.0.4_20161114.pdf>
-    pub fn set_vcom(&mut self) -> Result<()> {
+    pub fn set_vcom(&mut self) -> Result<usize> {
         let mut pmic_control = PMIC_CONTROL;
         // Set VCom set to yes
         pmic_control[9] = 1;
@@ -213,14 +211,12 @@ impl It8951 {
         pmic_control[7] = 0x09;
         pmic_control[8] = 0xc4;
 
-        self.connection.write_command_no_data(&pmic_control)?;
-
-        Ok(())
+        self.connection.write_command_no_data(&pmic_control)
     }
 
     /// Sets VCOM to 2500 (according to USB Programming Guide) and sets power state of display
     /// <https://www.waveshare.com/w/upload/c/c9/IT8951_USB_ProgrammingGuide_v.0.4_20161114.pdf>
-    pub fn set_power_vcom(&mut self, power_on: bool) -> Result<()> {
+    pub fn set_power_vcom(&mut self, power_on: bool) -> Result<usize> {
         let mut pmic_control = PMIC_CONTROL;
         // Set VCom set to yes
         pmic_control[9] = 1;
@@ -233,9 +229,7 @@ impl It8951 {
         // Power on or off?
         pmic_control[11] = power_on as u8;
 
-        self.connection.write_command_no_data(&pmic_control)?;
-
-        Ok(())
+        self.connection.write_command_no_data(&pmic_control)
     }
 
     fn get_sys(&mut self) -> Result<SystemInfo> {
