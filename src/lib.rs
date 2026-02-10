@@ -31,6 +31,14 @@ const DPY_AREA_CMD: [u8; 16] = [
 ];
 const VENDOR_ID: u16 = 0x48d;
 const PRODUCT_ID: u16 = 0x8951;
+const PMIC_CONTROL: [u8; 16] = [
+    0xfe, 0x00, 0x00, 0x00, 0x00, 0x00, 0xa3, 0x00, /* Set VCom 15:8 */
+    0x00, /* Set VCom 7:0 */
+    0x00, /* Do set VCom? 0 - no, 1 - yes */
+    0x00, /* Do Power on/off 0 - no, 1 - Do */
+    0x00, /* Power 1 - on/ 0 - off */
+    0x00, 0x00, 0x00, 0x00,
+];
 
 /// Display mode
 #[repr(u32)]
@@ -202,6 +210,54 @@ impl It8951 {
         })
     }
 
+    /// Power On/Off display
+    pub fn set_power(&mut self, on: bool) -> Result<()> {
+        let mut pmic_control = PMIC_CONTROL;
+        // Set do power on to yes
+        pmic_control[10] = 1;
+        // Power on or off?
+        pmic_control[11] = on as u8;
+
+        self.connection.write_command_no_data(&pmic_control)?;
+
+        Ok(())
+    }
+
+    /// Sets VCOM to 2500 (according to USB Programming Guide)
+    /// <https://www.waveshare.com/w/upload/c/c9/IT8951_USB_ProgrammingGuide_v.0.4_20161114.pdf>
+    pub fn set_vcom(&mut self) -> Result<()> {
+        let mut pmic_control = PMIC_CONTROL;
+        // Set VCom set to yes
+        pmic_control[9] = 1;
+        // Set VCom value to 2500
+        pmic_control[7] = 0x09;
+        pmic_control[8] = 0xc4;
+
+        self.connection.write_command_no_data(&pmic_control)?;
+
+        Ok(())
+    }
+
+    /// Sets VCOM to 2500 (according to USB Programming Guide) and sets power state of display
+    /// <https://www.waveshare.com/w/upload/c/c9/IT8951_USB_ProgrammingGuide_v.0.4_20161114.pdf>
+    pub fn set_power_vcom(&mut self, power_on: bool) -> Result<()> {
+        let mut pmic_control = PMIC_CONTROL;
+        // Set VCom set to yes
+        pmic_control[9] = 1;
+        // Set VCom value to 2500
+        pmic_control[7] = 0x09;
+        pmic_control[8] = 0xc4;
+
+        // Set do power on to yes
+        pmic_control[10] = 1;
+        // Power on or off?
+        pmic_control[11] = power_on as u8;
+
+        self.connection.write_command_no_data(&pmic_control)?;
+
+        Ok(())
+    }
+
     fn get_sys(&mut self) -> Result<SystemInfo> {
         self.connection
             .read_command(&GET_SYS_CMD, bincode::options().with_big_endian())
@@ -230,14 +286,8 @@ impl It8951 {
         )
     }
 
-    /// Update region of e-paper display.
-    pub fn update_region(
-        &mut self,
-        image: &image::DynamicImage,
-        x: u32,
-        y: u32,
-        mode: Mode,
-    ) -> Result<()> {
+    /// Load region of e-paper display
+    pub fn load_region(&mut self, image: &image::DynamicImage, x: u32, y: u32) -> Result<()> {
         let data = image.as_bytes();
         let (width, height) = image.dimensions();
 
@@ -266,6 +316,22 @@ impl It8951 {
             )?;
             i += row_height * w;
         }
+
+        Ok(())
+    }
+
+    /// Show region of e-paper display.
+    pub fn display_region(
+        &mut self,
+        x: u32,
+        y: u32,
+        width: u32,
+        height: u32,
+        mode: Mode,
+    ) -> Result<()> {
+        // we send the image in bands of MAX_TRANSFER
+        let address = self.get_system_info().unwrap().image_buffer_base;
+
         self.dpy_area(DisplayArea {
             address,
             display_mode: mode,

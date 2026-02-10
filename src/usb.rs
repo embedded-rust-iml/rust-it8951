@@ -103,6 +103,17 @@ impl ScsiOverUsbConnection {
         Ok(())
     }
 
+    pub fn write_command_no_data(&mut self, command: &[u8; 16]) -> Result<usize> {
+        let cbw_data = &get_command_block_wrapper(command, 0, Direction::OUT);
+        let data_written =
+            self.device_handle
+                .write_bulk(self.endpoint_out, cbw_data, self.timeout)?;
+
+        self.send_status_block_wrapper()?;
+
+        Ok(data_written)
+    }
+
     fn send_status_block_wrapper(&mut self) -> Result<CommandStatusWrapper> {
         let mut csb_data: [u8; 13] = [0; 13];
         loop {
