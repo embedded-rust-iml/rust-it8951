@@ -139,9 +139,6 @@ fn open_it8951() -> Result<DeviceHandle<Context>> {
     let context = Context::new()?;
     let devices = context.devices()?;
 
-    println!("Devices found:");
-    devices.iter().for_each(|device| println!("{:?}", device));
-
     let device = devices
         .iter()
         .find(|device| match device.device_descriptor() {
@@ -159,7 +156,7 @@ fn open_it8951() -> Result<DeviceHandle<Context>> {
         let handle = device.open()?;
         Ok(handle)
     } else {
-        println!("No device found");
+        println!("No IT8951 device found");
         Err(rusb::Error::NoDevice)
     }
 }

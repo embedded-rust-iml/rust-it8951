@@ -90,12 +90,10 @@ impl ScsiOverUsbConnection {
 
         // issue CBW block
         let cbw_data = &command_block_wrapper(command, bulk_data.len() as u32, Direction::OUT);
-        println!("Write bulk 1");
         self.device_handle
             .write_bulk(self.endpoint_out, cbw_data, self.timeout)?;
 
         // now write the data for the value
-        println!("Write bulk 2");
         self.device_handle
             .write_bulk(self.endpoint_out, &bulk_data, self.timeout)?;
 
