@@ -51,7 +51,7 @@ impl ScsiOverUsbConnection {
     ) -> Result<T> {
         let length = mem::size_of::<T>();
         // issue CBW block
-        let cbw_data = &get_command_block_wrapper(command, length as u32, Direction::IN);
+        let cbw_data = &command_block_wrapper(command, length as u32, Direction::IN);
         self.device_handle
             .write_bulk(self.endpoint_out, cbw_data, self.timeout)?;
 
@@ -61,7 +61,7 @@ impl ScsiOverUsbConnection {
             .read_bulk(self.endpoint_in, &mut buf, self.timeout)?;
 
         // issue CBS block
-        self.send_status_block_wrapper()?;
+        self.receive_command_status_wrapper()?;
 
         // transform data into required data
         let result: T = bincode_options
@@ -89,42 +89,54 @@ impl ScsiOverUsbConnection {
         bulk_data.extend_from_slice(data);
 
         // issue CBW block
-        let cbw_data = &get_command_block_wrapper(command, bulk_data.len() as u32, Direction::OUT);
+        let cbw_data = &command_block_wrapper(command, bulk_data.len() as u32, Direction::OUT);
+        println!("Write bulk 1");
         self.device_handle
             .write_bulk(self.endpoint_out, cbw_data, self.timeout)?;
 
         // now write the data for the value
+        println!("Write bulk 2");
         self.device_handle
             .write_bulk(self.endpoint_out, &bulk_data, self.timeout)?;
 
-        // issue CBS block
-        self.send_status_block_wrapper()?;
+        // issue CSW block
+        let csw = self.receive_command_status_wrapper()?;
 
-        Ok(())
+        if csw.status != 0 {
+            eprintln!("CSW Status not success: {:?}", csw);
+            Err(rusb::Error::Other)
+        } else {
+            Ok(())
+        }
     }
 
     pub fn write_command_no_data(&mut self, command: &[u8; 16]) -> Result<usize> {
-        let cbw_data = &get_command_block_wrapper(command, 0, Direction::OUT);
+        let cbw_data = &command_block_wrapper(command, 0, Direction::OUT);
         let data_written =
             self.device_handle
                 .write_bulk(self.endpoint_out, cbw_data, self.timeout)?;
 
-        self.send_status_block_wrapper()?;
+        let csw = self.receive_command_status_wrapper()?;
 
-        Ok(data_written)
+        if csw.status != 0 {
+            eprintln!("CSW Status not success: {:?}", csw);
+            Err(rusb::Error::Other)
+        } else {
+            Ok(data_written)
+        }
     }
 
-    fn send_status_block_wrapper(&mut self) -> Result<CommandStatusWrapper> {
-        let mut csb_data: [u8; 13] = [0; 13];
+    fn receive_command_status_wrapper(&mut self) -> Result<CommandStatusWrapper> {
+        let mut csw_data: [u8; 13] = [0; 13];
         loop {
             match self
                 .device_handle
-                .read_bulk(self.endpoint_in, &mut csb_data, self.timeout)
+                .read_bulk(self.endpoint_in, &mut csw_data, self.timeout)
             {
                 Ok(_size) => {
                     return Ok(bincode::options()
                         .with_fixint_encoding()
-                        .deserialize::<CommandStatusWrapper>(&csb_data)
+                        .deserialize::<CommandStatusWrapper>(&csw_data)
                         .unwrap());
                 }
                 Err(error) => match error {
@@ -141,7 +153,7 @@ impl ScsiOverUsbConnection {
     }
 }
 
-pub fn get_command_block_wrapper(
+pub fn command_block_wrapper(
     command_data: &[u8; 16],
     data_transfer_length: u32,
     direction: Direction,
@@ -151,7 +163,7 @@ pub fn get_command_block_wrapper(
         Direction::OUT => 0x00,
     };
     let tag = TAG.fetch_add(1, Ordering::SeqCst);
-    let cwb = CommandBlockWrapper {
+    let cbw = CommandBlockWrapper {
         signature: [0x55, 0x53, 0x42, 0x43],
         tag,
         data_transfer_length,
@@ -163,7 +175,7 @@ pub fn get_command_block_wrapper(
     bincode::options()
         .with_little_endian()
         .with_fixint_encoding()
-        .serialize(&cwb)
+        .serialize(&cbw)
         .unwrap()
 }
 
@@ -173,7 +185,7 @@ mod tests {
 
     #[test]
     fn mass_storage_command_data() {
-        let data = get_command_block_wrapper(
+        let data = command_block_wrapper(
             &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             18,
             Direction::OUT,
@@ -186,7 +198,7 @@ mod tests {
             ]
         );
         // the second time the tag increases
-        let data2 = get_command_block_wrapper(
+        let data2 = command_block_wrapper(
             &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             18,
             Direction::OUT,

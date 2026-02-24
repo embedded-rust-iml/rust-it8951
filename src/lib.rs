@@ -139,6 +139,9 @@ fn open_it8951() -> Result<DeviceHandle<Context>> {
     let context = Context::new()?;
     let devices = context.devices()?;
 
+    println!("Devices found:");
+    devices.iter().for_each(|device| println!("{:?}", device));
+
     let device = devices
         .iter()
         .find(|device| match device.device_descriptor() {
@@ -152,9 +155,11 @@ fn open_it8951() -> Result<DeviceHandle<Context>> {
         });
 
     if let Some(device) = device {
+        println!("Found display device: {:?}", device);
         let handle = device.open()?;
         Ok(handle)
     } else {
+        println!("No device found");
         Err(rusb::Error::NoDevice)
     }
 }
@@ -183,7 +188,10 @@ impl It8951 {
         if let Err(e) = device_handle.set_auto_detach_kernel_driver(true) {
             println!("auto detached failed, error is {e}");
         }
+        println!("Try to claim_interface 0");
         device_handle.claim_interface(0)?;
+        println!("Claimed");
+
         let mut result = It8951 {
             connection: usb::ScsiOverUsbConnection {
                 device_handle,
